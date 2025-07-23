@@ -160,12 +160,12 @@ export default function RecordTab() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
         colors={colors.gradient}
         style={styles.gradient}
       >
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: 'transparent' }]}>
           <Text style={styles.title}>Voice Recorder</Text>
           <Text style={styles.subtitle}>
             Record your meetings and get AI-powered summaries
@@ -207,80 +207,6 @@ export default function RecordTab() {
     </SafeAreaView>
   );
 }
-
-const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  gradient: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontFamily: 'Inter_700Bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    marginBottom: 60,
-  },
-  recordingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  importContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  apiKeyPrompt: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 40,
-    alignItems: 'center',
-  },
-  apiKeyText: {
-    fontSize: 18,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  apiKeySubtext: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  settingsButton: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  settingsButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-    marginLeft: 8,
-  },
-});
 
 const styles = StyleSheet.create({
   container: {

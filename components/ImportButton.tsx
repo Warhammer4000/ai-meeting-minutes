@@ -103,9 +103,18 @@ export default function ImportButton({ onImportComplete }: ImportButtonProps) {
   };
 
   return (
-    <TouchableOpacity style={[styles.button, { backgroundColor: isDark ? 'rgba(10, 132, 255, 0.1)' : '#F0F8FF', borderColor: colors.primary }]} onPress={handleImport}>
-      <Upload size={20} color="#007AFF" />
-      <Text style={[styles.buttonText, { color: colors.primary }]}>Import Recording</Text>
+    <TouchableOpacity 
+      style={[
+        styles.button, 
+        { 
+          backgroundColor: isDark ? 'rgba(10, 132, 255, 0.15)' : 'rgba(0, 122, 255, 0.1)', 
+          borderColor: isDark ? '#0A84FF' : '#007AFF' 
+        }
+      ]} 
+      onPress={handleImport}
+    >
+      <Upload size={20} color={isDark ? '#0A84FF' : '#007AFF'} />
+      <Text style={[styles.buttonText, { color: isDark ? '#0A84FF' : '#007AFF' }]}>Import Recording</Text>
     </TouchableOpacity>
   );
 }
