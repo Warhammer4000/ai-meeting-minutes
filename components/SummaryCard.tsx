@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Play, Pause, Mail, Trash2, Clock, Brain, Loader as Loader2, Copy } from 'lucide-react-native';
+import { Play, Pause, Mail, Trash2, Clock, Brain, Loader as Loader2, Copy, Share } from 'lucide-react-native';
 import Markdown from 'react-native-markdown-display';
 import * as Clipboard from 'expo-clipboard';
+import * as Sharing from 'expo-sharing';
 import { Recording } from '@/types';
 import * as MailComposer from 'expo-mail-composer';
 import { useTheme } from '@/contexts/ThemeContext';
+import { MarkdownProcessor } from '@/utils/markdownProcessor';
 
 interface SummaryCardProps {
   recording: Recording;
@@ -76,6 +78,36 @@ export default function SummaryCard({
     }
   };
 
+  const handleNativeShare = async () => {
+    if (!recording.summary) {
+      Alert.alert('No Summary', 'This recording has not been processed yet.');
+      return;
+    }
+
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
+        return;
+      }
+
+      // Create a plain text version for sharing
+      const shareMessage = MarkdownProcessor.createShareMessage(
+        recording.title,
+        recording.summary,
+        recording.createdAt
+      );
+
+      await Sharing.shareAsync('data:text/plain;base64,' + btoa(shareMessage), {
+        mimeType: 'text/plain',
+        dialogTitle: `Share ${recording.title}`,
+        UTI: 'public.plain-text',
+      });
+    } catch (error) {
+      console.error('Share error:', error);
+      Alert.alert('Share Failed', 'Failed to share the summary. Please try again.');
+    }
+  };
   const handleDelete = () => {
     Alert.alert(
       'Delete Recording',
@@ -125,6 +157,12 @@ export default function SummaryCard({
           {recording.summary && (
             <TouchableOpacity style={[styles.controlButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]} onPress={handleShare}>
               <Mail size={20} color="#34C759" />
+            </TouchableOpacity>
+          )}
+          
+          {recording.summary && (
+            <TouchableOpacity style={[styles.controlButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]} onPress={handleNativeShare}>
+              <Share size={20} color="#5856D6" />
             </TouchableOpacity>
           )}
           
