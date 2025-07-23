@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Alert, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Settings } from 'lucide-react-native';
@@ -17,6 +17,7 @@ const audioManager = new AudioManager();
 export default function RecordTab() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [settings, setSettings] = useState<AppSettings>({});
 
@@ -112,8 +113,8 @@ export default function RecordTab() {
       // Process with Gemini if API key is available
       if (settings.geminiApiKey) {
         try {
+          setIsGeneratingAI(true);
           console.log('Starting Gemini processing...');
-          Alert.alert('Processing', 'Generating meeting minutes with AI...');
           
           const { data: base64Audio, mimeType } = await audioManager.convertToBase64(uri);
           console.log('Processing with Gemini API...');
@@ -129,8 +130,10 @@ export default function RecordTab() {
           });
           
           Alert.alert('Success!', 'Recording saved and meeting minutes generated successfully. Check the Summaries tab to view the results.');
+          setIsGeneratingAI(false);
         } catch (error) {
           console.error('Gemini processing error:', error);
+          setIsGeneratingAI(false);
           await storageUtils.updateRecording(recording.id, { isProcessing: false });
           
           let errorMessage = 'Recording saved, but failed to generate summary.';
@@ -174,12 +177,20 @@ export default function RecordTab() {
           <View style={styles.recordingContainer}>
             <RecordingButton
               isRecording={isRecording}
-              isProcessing={isProcessing}
+              isProcessing={isProcessing || isGeneratingAI}
               onStartRecording={startRecording}
               onStopRecording={stopRecording}
               duration={recordingDuration}
             />
           </View>
+
+          {isGeneratingAI && (
+            <View style={styles.aiProcessingContainer}>
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={styles.aiProcessingText}>🤖 Generating AI Summary...</Text>
+              <Text style={styles.aiProcessingSubtext}>This may take a few moments</Text>
+            </View>
+          )}
 
           <View style={styles.importContainer}>
             <ImportButton onImportComplete={handleImportComplete} />
@@ -239,6 +250,25 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  aiProcessingContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+    paddingHorizontal: 20,
+  },
+  aiProcessingText: {
+    fontSize: 18,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#fff',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  aiProcessingSubtext: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    marginTop: 8,
   },
   importContainer: {
     alignItems: 'center',

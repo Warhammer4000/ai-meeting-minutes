@@ -77,7 +77,7 @@ export default function RecordingButton({
 
       <Text style={styles.instruction}>
         {isProcessing 
-          ? 'Processing...' 
+          ? 'Processing recording...' 
           : isRecording 
             ? 'Tap to stop recording' 
             : 'Tap to start recording'

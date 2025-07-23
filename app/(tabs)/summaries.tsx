@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, RefreshControl, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { useFocusEffect } from '@react-navigation/native';
@@ -95,6 +95,7 @@ export default function SummariesTab() {
           'API Key Required',
           'Please add your Gemini API key in Settings to generate summaries.'
         );
+        setGeneratingSummaryId(null);
         return;
       }
 
@@ -102,6 +103,7 @@ export default function SummariesTab() {
       const recording = recordings.find(r => r.id === recordingId);
       if (!recording) {
         Alert.alert('Error', 'Recording not found.');
+        setGeneratingSummaryId(null);
         return;
       }
 
@@ -131,10 +133,7 @@ export default function SummariesTab() {
       
       await loadRecordings();
       
-      Alert.alert(
-        'Success!', 
-        'AI meeting minutes generated successfully!'
-      );
+      Alert.alert('Success!', 'AI meeting minutes generated successfully!');
     } catch (error) {
       console.error('Manual summary generation error:', error);
       
@@ -204,6 +203,18 @@ export default function SummariesTab() {
             </Text>
           </View>
         )}
+        
+        {generatingSummaryId && (
+          <View style={[styles.globalProcessingOverlay, { backgroundColor: colors.background }]}>
+            <View style={[styles.globalProcessingContainer, { backgroundColor: colors.card }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.globalProcessingText, { color: colors.text }]}>🤖 Generating AI Summary</Text>
+              <Text style={[styles.globalProcessingSubtext, { color: colors.textSecondary }]}>
+                This may take a few moments...
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -256,5 +267,41 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     textAlign: 'center',
     lineHeight: 22,
+  },
+  globalProcessingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  globalProcessingContainer: {
+    padding: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginHorizontal: 40,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  globalProcessingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  globalProcessingSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
   },
 });
