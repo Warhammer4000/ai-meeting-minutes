@@ -107,14 +107,14 @@ export default function ImportButton({ onImportComplete }: ImportButtonProps) {
       style={[
         styles.button, 
         { 
-          backgroundColor: isDark ? 'rgba(10, 132, 255, 0.15)' : 'rgba(0, 122, 255, 0.1)', 
-          borderColor: isDark ? '#0A84FF' : '#007AFF' 
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 122, 255, 0.1)', 
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.3)' : '#007AFF' 
         }
       ]} 
       onPress={handleImport}
     >
-      <Upload size={20} color={isDark ? '#0A84FF' : '#007AFF'} />
-      <Text style={[styles.buttonText, { color: isDark ? '#0A84FF' : '#007AFF' }]}>Import Recording</Text>
+      <Upload size={20} color={isDark ? '#FFFFFF' : '#007AFF'} />
+      <Text style={[styles.buttonText, { color: isDark ? '#FFFFFF' : '#007AFF' }]}>Import Recording</Text>
     </TouchableOpacity>
   );
 }

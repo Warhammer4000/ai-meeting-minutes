@@ -162,7 +162,7 @@ export default function RecordTab() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={colors.gradient}
+        colors={isDark ? ['#1C1C1E', '#000000'] : colors.gradient}
         style={styles.gradient}
       >
         <View style={[styles.content, { backgroundColor: 'transparent' }]}>
