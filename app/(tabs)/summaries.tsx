@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, RefreshControl, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, RefreshControl, Alert, ActivityIndicator, TextInput, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { useFocusEffect } from '@react-navigation/native';
+import { Search, Calendar, Filter, X } from 'lucide-react-native';
 import SummaryCard from '@/components/SummaryCard';
 import ImportButton from '@/components/ImportButton';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -15,9 +16,13 @@ const audioManager = new AudioManager();
 
 export default function SummariesTab() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [filteredRecordings, setFilteredRecordings] = useState<Recording[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [generatingSummaryId, setGeneratingSummaryId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
   const { colors, isDark } = useTheme();
 
@@ -38,10 +43,50 @@ export default function SummariesTab() {
       const savedRecordings = await storageUtils.getRecordings();
       console.log('Loaded recordings:', savedRecordings.length);
       setRecordings(savedRecordings);
+      applyFilters(savedRecordings, searchQuery, dateFilter);
     } catch (error) {
       console.error('Error loading recordings:', error);
     }
   };
+
+  const applyFilters = (recordingsList: Recording[], query: string, filter: string) => {
+    let filtered = [...recordingsList];
+
+    // Apply search filter
+    if (query.trim()) {
+      filtered = filtered.filter(recording =>
+        recording.title.toLowerCase().includes(query.toLowerCase()) ||
+        (recording.summary && recording.summary.toLowerCase().includes(query.toLowerCase()))
+      );
+    }
+
+    // Apply date filter
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    switch (filter) {
+      case 'today':
+        filtered = filtered.filter(recording => recording.createdAt >= today);
+        break;
+      case 'week':
+        filtered = filtered.filter(recording => recording.createdAt >= weekAgo);
+        break;
+      case 'month':
+        filtered = filtered.filter(recording => recording.createdAt >= monthAgo);
+        break;
+      default:
+        // 'all' - no additional filtering
+        break;
+    }
+
+    setFilteredRecordings(filtered);
+  };
+
+  useEffect(() => {
+    applyFilters(recordings, searchQuery, dateFilter);
+  }, [recordings, searchQuery, dateFilter]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -159,10 +204,20 @@ export default function SummariesTab() {
       onStop={handleStop}
       onDelete={handleDelete}
       onGenerateSummary={handleGenerateSummary}
+      onUpdate={loadRecordings}
       isPlaying={playingId === item.id}
       isGeneratingSummary={generatingSummaryId === item.id}
     />
   );
+
+  const getFilterLabel = (filter: string) => {
+    switch (filter) {
+      case 'today': return 'Today';
+      case 'week': return 'This Week';
+      case 'month': return 'This Month';
+      default: return 'All Time';
+    }
+  };
 
   if (!fontsLoaded) {
     return null;
@@ -176,18 +231,75 @@ export default function SummariesTab() {
       >
         <Text style={styles.title}>Meeting Summaries</Text>
         <Text style={styles.subtitle}>
-          {recordings.length} recording{recordings.length !== 1 ? 's' : ''}
+          {filteredRecordings.length} of {recordings.length} recording{recordings.length !== 1 ? 's' : ''}
         </Text>
       </LinearGradient>
 
       <View style={[styles.content, { backgroundColor: colors.background }]}>
+        {/* Search and Filter Section */}
+        <View style={styles.searchSection}>
+          <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Search size={20} color={colors.textSecondary} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder="Search recordings or summaries..."
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <X size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.filterRow}>
+            <TouchableOpacity
+              style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => setShowFilters(!showFilters)}
+            >
+              <Calendar size={16} color={colors.primary} />
+              <Text style={[styles.filterButtonText, { color: colors.primary }]}>
+                {getFilterLabel(dateFilter)}
+              </Text>
+              <Filter size={16} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+
+          {showFilters && (
+            <View style={[styles.filterOptions, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              {['all', 'today', 'week', 'month'].map((filter) => (
+                <TouchableOpacity
+                  key={filter}
+                  style={[
+                    styles.filterOption,
+                    dateFilter === filter && { backgroundColor: colors.primary + '20' }
+                  ]}
+                  onPress={() => {
+                    setDateFilter(filter as any);
+                    setShowFilters(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.filterOptionText,
+                    { color: dateFilter === filter ? colors.primary : colors.text }
+                  ]}>
+                    {getFilterLabel(filter)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
         <View style={styles.importButtonContainer}>
           <ImportButton onImportComplete={loadRecordings} />
         </View>
         
-        {recordings.length > 0 ? (
+        {filteredRecordings.length > 0 ? (
           <FlatList
-            data={recordings}
+            data={filteredRecordings}
             renderItem={renderRecording}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContainer}
@@ -197,9 +309,14 @@ export default function SummariesTab() {
           />
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No recordings yet</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              {recordings.length === 0 ? 'No recordings yet' : 'No recordings found'}
+            </Text>
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              Start recording to create your first meeting summary
+              {recordings.length === 0 
+                ? 'Start recording to create your first meeting summary'
+                : 'Try adjusting your search or filter criteria'
+              }
             </Text>
           </View>
         )}
@@ -244,8 +361,60 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
-  importButtonContainer: {
+  searchSection: {
     paddingTop: 20,
+    marginBottom: 10,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  filterOptions: {
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  filterOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  filterOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  importButtonContainer: {
+    paddingTop: 10,
   },
   listContainer: {
     paddingTop: 20,
