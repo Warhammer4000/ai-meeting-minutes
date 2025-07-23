@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Alert, Linking, Switch } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Alert, Linking, Switch, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Key, Mail, ExternalLink, Save, Info, Moon, Sun } from 'lucide-react-native';
@@ -69,7 +69,11 @@ export default function SettingsTab() {
         <Text style={styles.subtitle}>Configure your app preferences</Text>
       </LinearGradient>
 
-      <View style={[styles.content, { backgroundColor: colors.background }]}>
+      <ScrollView 
+        style={[styles.content, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <View style={styles.sectionHeader}>
             {isDark ? <Moon size={20} color="#FF9F0A" /> : <Sun size={20} color="#FF9F0A" />}
@@ -149,7 +153,7 @@ export default function SettingsTab() {
             This app uses Google's Gemini 2.5 Flash to generate intelligent meeting summaries from your recordings.
           </Text>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -176,8 +180,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 20,
+    paddingBottom: 40,
   },
   section: {
     borderRadius: 12,
