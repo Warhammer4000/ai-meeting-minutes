@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, TextInput } from 'react-native';
-import { Play, Pause, Mail, Trash2, Clock, Brain, Loader as Loader2, Copy, Share, Edit3, Check, X, MoreHorizontal } from 'lucide-react-native';
+import { Play, Pause, Mail, Trash2, Clock, Brain, Loader as Loader2, Copy, Share, CreditCard as Edit3, Check, X, MoveHorizontal as MoreHorizontal } from 'lucide-react-native';
 import Markdown from 'react-native-markdown-display';
 import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
