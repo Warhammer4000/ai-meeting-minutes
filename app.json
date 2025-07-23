@@ -33,11 +33,6 @@
     "owner": "tanim2025",
     "android": {
       "package": "com.brainstation23.aimeetingsummary"
-    },
-    "build": {
-      "preview": {
-        "distribution": "internal"
-      }
     }
   }
 }
