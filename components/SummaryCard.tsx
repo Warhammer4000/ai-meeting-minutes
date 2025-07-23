@@ -4,6 +4,7 @@ import { Play, Pause, Mail, Trash2, Clock, Brain, Loader as Loader2, Copy, Share
 import Markdown from 'react-native-markdown-display';
 import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import { Recording } from '@/types';
 import * as MailComposer from 'expo-mail-composer';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -119,12 +120,30 @@ export default function SummaryCard({
         recording.createdAt
       );
 
-      await Sharing.shareAsync('data:text/plain;base64,' + btoa(shareMessage), {
+      // Create a temporary file for sharing
+      const fileName = `meeting-summary-${Date.now()}.txt`;
+      const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+      
+      // Write the share message to the temporary file
+      await FileSystem.writeAsStringAsync(fileUri, shareMessage, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      
+      // Share the file
+      await Sharing.shareAsync(fileUri, {
         mimeType: 'text/plain',
         dialogTitle: `Share ${recording.title}`,
         UTI: 'public.plain-text',
       });
+      
+      // Clean up the temporary file
+      try {
+        await FileSystem.deleteAsync(fileUri, { idempotent: true });
+      } catch (cleanupError) {
+        console.warn('Failed to cleanup temporary file:', cleanupError);
+      }
     } catch (error) {
+      console.error('Native share error:', error);
       Alert.alert('Share Failed', 'Failed to share the summary. Please try again.');
     }
   };
