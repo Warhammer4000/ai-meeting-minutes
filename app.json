@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "AI Recording Summary",
-    "slug": "ai-recording-summary",
+    "name": "Vocario",
+    "slug": "vocario",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "vocario",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -25,14 +25,8 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "6f4159c3-27fb-4aef-9797-e80cd2eed43f"
-      }
-    },
-    "owner": "tanim2025",
-    "android": {
-      "package": "com.brainstation23.aimeetingsummary"
+      "router": {}
     }
+
   }
 }
