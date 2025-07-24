@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Alert, SafeAreaView, TouchableOpacity, Activity
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Settings } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import RecordingButton from '@/components/RecordingButton';
 import ImportButton from '@/components/ImportButton';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -33,6 +33,12 @@ export default function RecordTab() {
   useEffect(() => {
     loadSettings();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadSettings();
+    }, [])
+  );
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
