@@ -25,8 +25,13 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "72e9a8cf-2a28-45a7-950d-52a2d159e7e0"
+      }
+    },
+    "android": {
+      "package": "com.brainstation23.vocario"
     }
-
   }
 }
