@@ -106,19 +106,28 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 
 ---
 
-## License
-
-[MIT](LICENSE)
-
----
-
 ## Credits
 
 - Developed by [Brain Station 23](https://brainstation-23.com) and contributors.
-- Powered by [Google Gemini](https://aistudio.google.com/).
 
 ---
 
 ## Contact
 
 For support or inquiries, please contact the project owner or open an issue on GitHub.
+
+
+
+## License
+
+**Vocario** is licensed under the **Polyform Personal Use License 1.0.0 (Customized)**  
+This means:
+
+- ✅ Free for personal use
+- ❌ No redistribution, hosting, or resale
+
+© 2025 [Brain Station 23](https://brainstation-23.com)
+
+Read the full license [here](./LICENSE.MD).
+
+
