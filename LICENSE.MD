@@ -1,20 +1,48 @@
-Polyform Personal Use License 1.0.0 – Customized for Vocario  
-Copyright (c) 2025 Brain Station 23
+# Vocario License
 
-Permission is granted to use the software known as “Vocario” and its source code solely for personal, non-commercial purposes.
+**Polyform Personal Use License 1.0.0 – Customized for Vocario**  
+**Copyright © 2025 Brain Station 23**
 
-You may:
-- Use the software for your own personal tasks.
-- Modify the code for your own use.
+---
 
-You may not:
-- Distribute, sublicense, or share this software or any derivative works.
-- Use the software for commercial purposes, including internal business use.
-- Incorporate any portion of this software into another product or service.
-- Host the software for others or provide it as a service, free or paid.
+## Summary
 
-All rights not expressly granted are reserved by Brain Station 23.
+You are free to **use** and **modify** this software **for personal use only**.  
+You are **not allowed** to share, distribute, resell, or host this software in any form.
 
-This software is provided "as is", without warranty of any kind.
+---
 
-For more information about this license, visit https://polyformproject.org/licenses/personal-use/1.0.0/
+## Permissions
+
+You **may**:
+
+- ✅ Use the software for your own **personal, non-commercial** purposes.
+- ✅ Modify or customize the code for **yourself**.
+
+---
+
+## Restrictions
+
+You **may not**:
+
+- ❌ Use the software or any derivative works for **commercial** purposes.
+- ❌ Distribute or share the software or modified versions.
+- ❌ Host the software or provide it as a service (free or paid).
+- ❌ Incorporate this software into other products, services, or applications.
+
+All rights not expressly granted are reserved by **Brain Station 23**.
+
+---
+
+## Disclaimer
+
+This software is provided **"as is"**, without warranty of any kind, express or implied.  
+Use at your own risk.
+
+---
+
+## License Reference
+
+Based on [Polyform Personal Use License 1.0.0](https://polyformproject.org/licenses/personal-use/1.0.0/)
+
+For questions, please contact: [info@brainstation-23.com](mailto:info@brainstation-23.com)
