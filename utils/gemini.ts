@@ -1,124 +1,171 @@
-import { GoogleGenAI, createUserContent, createPartFromUri } from '@google/genai';
 import * as FileSystem from 'expo-file-system';
 
 export class GeminiAPI {
-  private ai: GoogleGenAI;
+  private apiKey: string;
 
   constructor(apiKey: string) {
-    this.ai = new GoogleGenAI({ apiKey });
+    this.apiKey = apiKey;
   }
 
   async transcribeAndSummarize(audioUri: string, mimeType: string = 'audio/aac'): Promise<string> {
     try {
-      console.log('Starting Gemini 2.5 Flash API call...');
-      console.log('Audio URI:', audioUri);
-      console.log('MIME type:', mimeType);
-      
-      // Check file size to determine whether to use Files API or inline data
+      // 1. Get file info
       const fileInfo = await FileSystem.getInfoAsync(audioUri);
-      console.log('File info:', fileInfo);
-      
       if (!fileInfo.exists) {
         throw new Error('Audio file does not exist');
       }
+      const fileSize = fileInfo.size ?? 0;
+      const displayName = audioUri.split('/').pop() || 'audio';
 
-      const fileSizeInMB = (fileInfo.size || 0) / (1024 * 1024);
-      console.log('File size:', fileSizeInMB.toFixed(2), 'MB');
-
-      const prompt = `
-Please analyze this audio recording and create comprehensive meeting minutes. Include:
-
-1. **Meeting Summary**: Brief overview of the main topics discussed
-2. **Key Discussion Points**: Main topics and decisions made
-3. **Action Items**: Any tasks, assignments, or follow-ups mentioned
-4. **Important Notes**: Critical information or deadlines
-5. **Participants**: If mentioned, list who was involved
-6. **Next Steps**: Any planned future actions or meetings
-
-Format the response in a clear, professional manner suitable for sharing with colleagues.
-      `;
-
-      let response;
-
-      // Use Files API for files larger than 15MB to leave room for prompt and other data
-      if (fileSizeInMB > 15) {
-        console.log('Using Files API for large file...');
-        
-        // Upload file using Files API
-        const uploadedFile = await this.ai.files.upload({
-          file: audioUri,
-          config: { mimeType: mimeType },
-        });
-        
-        console.log('File uploaded successfully:', uploadedFile.uri);
-        
-        // Generate content using uploaded file
-        response = await this.ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: createUserContent([
-            createPartFromUri(uploadedFile.uri, uploadedFile.mimeType),
-            prompt
-          ]),
-        });
-        
-        console.log('Cleaning up uploaded file...');
-        // Clean up the uploaded file
-        try {
-          await this.ai.files.delete(uploadedFile.name);
-          console.log('Uploaded file cleaned up successfully');
-        } catch (cleanupError) {
-          console.warn('Failed to cleanup uploaded file:', cleanupError);
-        }
-      } else {
-        console.log('Using inline data for smaller file...');
-        
-        // Convert to base64 for inline data
-        const base64Data = await FileSystem.readAsStringAsync(audioUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        
-        console.log('Audio converted to base64, length:', base64Data.length);
-        
-        const contents = [
-          { text: prompt },
+      // 2. Start resumable upload
+      console.log('[GeminiAPI] Starting resumable upload', {
+        url: `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${this.apiKey}`,
+        method: 'POST',
+        headers: {
+          'X-Goog-Upload-Protocol': 'resumable',
+          'X-Goog-Upload-Command': 'start',
+          'X-Goog-Upload-Header-Content-Length': String(fileSize),
+          'X-Goog-Upload-Header-Content-Type': mimeType,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ file: { display_name: displayName } })
+      });
+      let startRes;
+      try {
+        startRes = await fetch(
+          `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${this.apiKey}`,
           {
-            inlineData: {
-              mimeType: mimeType,
-              data: base64Data
-            }
+            method: 'POST',
+            headers: {
+              'X-Goog-Upload-Protocol': 'resumable',
+              'X-Goog-Upload-Command': 'start',
+              'X-Goog-Upload-Header-Content-Length': String(fileSize),
+              'X-Goog-Upload-Header-Content-Type': mimeType,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ file: { display_name: displayName } }),
           }
-        ];
-
-        response = await this.ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: contents,
-        });
+        );
+        console.log('[GeminiAPI] Resumable upload response', startRes.status, startRes.statusText, startRes.headers);
+      } catch (err) {
+        console.error('[GeminiAPI] Network error during start upload:', err);
+        throw err;
+      }
+      if (!startRes.ok) {
+        let errorText = '';
+        try { errorText = await startRes.text(); } catch {};
+        console.error('[GeminiAPI] Start upload failed', startRes.status, errorText);
+        throw new Error('Failed to start resumable upload');
+      }
+      // 3. Get upload URL from headers
+      const uploadUrl = startRes.headers.get('X-Goog-Upload-Url');
+      console.log('[GeminiAPI] Upload URL:', uploadUrl);
+      if (!uploadUrl) {
+        throw new Error('No upload URL received from Gemini API');
       }
 
-      console.log('Gemini API Success Response received');
-      const result = response.text;
-      console.log('Generated summary length:', result.length);
-      
-      return result || 'No summary generated';
-    } catch (error) {
-      console.error('Gemini API Error:', error);
-      
-      // Provide more specific error messages
-      if (error instanceof Error) {
-        if (error.message.includes('API_KEY_INVALID')) {
-          throw new Error('Invalid API key. Please check your Gemini API key in Settings.');
-        } else if (error.message.includes('QUOTA_EXCEEDED')) {
-          throw new Error('API quota exceeded. Please check your Gemini API usage limits.');
-        } else if (error.message.includes('UNSUPPORTED_MEDIA_TYPE')) {
-          throw new Error('Audio format not supported. Please try recording again.');
-        } else if (error.message.includes('REQUEST_TOO_LARGE')) {
-          throw new Error('Audio file too large. Please record a shorter audio clip.');
-        } else if (error.message.includes('PERMISSION_DENIED')) {
-          throw new Error('Permission denied. Please check your API key permissions.');
+      // 4. Read file as Blob (preferred for React Native/Expo)
+      let fileBlob: Blob | null = null;
+      try {
+        // Try fetch-blob method (works in Expo bare and many managed environments)
+        fileBlob = await (await fetch(audioUri)).blob();
+        console.log('[GeminiAPI] File Blob created via fetch:', fileBlob);
+      } catch (e) {
+        console.warn('[GeminiAPI] Could not create Blob via fetch, falling back to base64->Blob:', e);
+      }
+      if (!fileBlob) {
+        // Fallback: convert base64 to Blob manually (for older Expo Go)
+        const fileBuffer = await FileSystem.readAsStringAsync(audioUri, { encoding: FileSystem.EncodingType.Base64 });
+        const byteCharacters = atob(fileBuffer);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
         }
+        const byteArray = new Uint8Array(byteNumbers);
+        fileBlob = new Blob([byteArray], { type: mimeType });
+        console.log('[GeminiAPI] File Blob created via base64 fallback:', fileBlob);
       }
-      
-      throw new Error(`Failed to generate summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+      // 5. Upload the actual bytes
+      console.log('[GeminiAPI] Uploading binary data as Blob', { uploadUrl, type: fileBlob.type, size: fileBlob.size });
+      let uploadRes;
+      try {
+        uploadRes = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Length': String(fileSize),
+            'X-Goog-Upload-Offset': '0',
+            'X-Goog-Upload-Command': 'upload, finalize',
+            'Content-Type': mimeType,
+          },
+          body: fileBlob,
+        });
+        console.log('[GeminiAPI] Upload binary response', uploadRes.status, uploadRes.statusText);
+      } catch (err) {
+        console.error('[GeminiAPI] Network error during binary upload:', err);
+        throw err;
+      }
+      if (!uploadRes.ok) {
+        let errorText = '';
+        try { errorText = await uploadRes.text(); } catch {};
+        console.error('[GeminiAPI] Binary upload failed', uploadRes.status, errorText);
+        throw new Error('Failed to upload audio data');
+      }
+      const uploadJson = await uploadRes.json();
+      const fileUri = uploadJson?.file?.uri;
+      console.log('[GeminiAPI] Uploaded file URI:', fileUri);
+      if (!fileUri) {
+        throw new Error('No file URI returned from upload');
+      }
+
+      // 6. Prepare prompt and request body
+      const prompt = `Please analyze this audio recording and create comprehensive meeting minutes. Include:\n\n1. **Meeting Summary**: Brief overview of the main topics discussed\n2. **Key Discussion Points**: Main topics and decisions made\n3. **Action Items**: Any tasks, assignments, or follow-ups mentioned\n4. **Important Notes**: Critical information or deadlines\n5. **Participants**: If mentioned, list who was involved\n6. **Next Steps**: Any planned future actions or meetings\n\nFormat the response in a clear, professional manner suitable for sharing with colleagues.`;
+      const contentBody = {
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              { file_data: { mime_type: mimeType, file_uri: fileUri } }
+            ]
+          }
+        ]
+      };
+
+      // 7. Generate content
+      console.log('[GeminiAPI] Generating content with file URI', fileUri);
+      let genRes;
+      try {
+        genRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${this.apiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(contentBody),
+          }
+        );
+        console.log('[GeminiAPI] Generate content response', genRes.status, genRes.statusText);
+      } catch (err) {
+        console.error('[GeminiAPI] Network error during generateContent:', err);
+        throw err;
+      }
+      if (!genRes.ok) {
+        let errorText = '';
+        try { errorText = await genRes.text(); } catch {};
+        console.error('[GeminiAPI] Generate content failed', genRes.status, errorText);
+        throw new Error('Failed to generate content from Gemini API');
+      }
+      const genJson = await genRes.json();
+      // Try to extract the summary text
+      const text = genJson?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('\n').trim();
+      console.log('[GeminiAPI] Final summary text:', text);
+      return text || 'No summary generated';
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Gemini REST API error: ${error.message}`);
+      }
+      throw new Error('Unknown error in Gemini REST API');
     }
   }
 }
