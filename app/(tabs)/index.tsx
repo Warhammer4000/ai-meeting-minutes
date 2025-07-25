@@ -113,7 +113,7 @@ export default function RecordTab() {
         isProcessing: true,
       };
 
-      await storageUtils.saveRecording(recording);
+      await storageUtils.saveRecording(recording, uri);
       console.log('Recording saved:', recording);
 
       // Process with Gemini if API key is available
