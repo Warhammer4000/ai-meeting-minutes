@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, TextInput } from 'react-native';
-import { Play, Pause, Mail, Trash2, Clock, Brain, Loader as Loader2, Copy, Share, CreditCard as Edit3, Check, X, MoveHorizontal as MoreHorizontal } from 'lucide-react-native';
-import Markdown from 'react-native-markdown-display';
+import { View, Text, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { Trash2, Clock, Brain, Loader as Loader2, Copy, CreditCard as Edit3, Check, X, Share } from 'lucide-react-native';
+import { SummaryCardActions } from './SummaryCardActions';
+import { SummaryMarkdown } from './SummaryMarkdown';
+import { summaryCardStyles as styles } from './SummaryCard.styles';
 import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { Recording } from '@/types';
-import * as MailComposer from 'expo-mail-composer';
+
 import { useTheme } from '@/contexts/ThemeContext';
 import { MarkdownProcessor } from '@/utils/markdownProcessor';
 import { storageUtils } from '@/utils/storage';
@@ -69,23 +71,39 @@ export default function SummaryCard({
     setIsEditing(false);
   };
 
-  const handleShare = async () => {
-    if (!recording.summary) {
-      Alert.alert('No Summary', 'This recording has not been processed yet.');
-      return;
-    }
+  // Share audio file
+  const handleShareAudio = async () => {
+    try {
+      // Try to use the actual recording.uri if available (should include extension)
+      let audioFile = recording.uri;
+      let mimeType = 'audio/aac'; // Default
+      if (!audioFile) {
+        // Fallback to old storage pattern
+        audioFile = FileSystem.documentDirectory + 'recordings/' + recording.id;
+      }
+      // Guess MIME type from extension
+      if (audioFile.endsWith('.mp3')) mimeType = 'audio/mp3';
+      else if (audioFile.endsWith('.wav')) mimeType = 'audio/wav';
+      else if (audioFile.endsWith('.m4a') || audioFile.endsWith('.aac')) mimeType = 'audio/aac';
+      else if (audioFile.endsWith('.ogg')) mimeType = 'audio/ogg';
+      else if (audioFile.endsWith('.flac')) mimeType = 'audio/flac';
+      else if (audioFile.endsWith('.aiff')) mimeType = 'audio/aiff';
 
-    const isAvailable = await MailComposer.isAvailableAsync();
-    if (!isAvailable) {
-      Alert.alert('Email Not Available', 'Email is not configured on this device.');
-      return;
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
+        return;
+      }
+      await Sharing.shareAsync(audioFile, {
+        mimeType,
+        dialogTitle: `Share ${recording.title}`,
+      });
+    } catch (error) {
+      console.error('Audio share error:', error);
+      Alert.alert('Share Failed', 'Failed to share the audio file. Please try again.');
     }
-
-    await MailComposer.composeAsync({
-      subject: `Meeting Minutes - ${recording.title}`,
-      body: `Meeting Minutes\n\n${recording.summary}\n\nGenerated on ${formatDate(recording.createdAt)}`,
-    });
   };
+
 
   const handleCopy = async () => {
     if (!recording.summary) {
@@ -217,21 +235,14 @@ export default function SummaryCard({
         </View>
 
         {/* Primary Actions */}
-        <View style={styles.primaryActions}>
-          <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: colors.primary }]}
-            onPress={() => isPlaying ? onStop() : onPlay(recording.uri)}
-          >
-            {isPlaying ? <Pause size={20} color="#fff" /> : <Play size={20} color="#fff" />}
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.moreButton, { backgroundColor: colors.surface }]}
-            onPress={() => setShowActions(!showActions)}
-          >
-            <MoreHorizontal size={20} color={colors.text} />
-          </TouchableOpacity>
-        </View>
+        <SummaryCardActions
+          isPlaying={isPlaying}
+          onPlay={() => onPlay(recording.uri)}
+          onPause={onStop}
+          onShare={handleShareAudio}
+          onMore={() => setShowActions(!showActions)}
+          colors={colors}
+        />
       </View>
 
       {/* Processing Indicator */}
@@ -275,16 +286,7 @@ export default function SummaryCard({
                 <Text style={[styles.actionText, { color: colors.text }]}>Copy Summary</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.actionItem}
-                onPress={() => {
-                  handleShare();
-                  setShowActions(false);
-                }}
-              >
-                <Mail size={18} color={colors.success} />
-                <Text style={[styles.actionText, { color: colors.text }]}>Email Summary</Text>
-              </TouchableOpacity>
+
 
               <TouchableOpacity 
                 style={styles.actionItem}
@@ -314,20 +316,13 @@ export default function SummaryCard({
 
       {/* Summary Section */}
       {recording.summary && (
-        <TouchableOpacity 
-          style={styles.summaryContainer}
-          onPress={() => setIsExpanded(!isExpanded)}
-        >
-          <Text style={[styles.summaryLabel, { color: colors.primary }]}>📝 AI Meeting Summary</Text>
-          <View style={[styles.markdownContainer, !isExpanded && styles.collapsedMarkdown]}>
-            <Markdown style={createMarkdownStyles(colors, isDark)}>
-              {recording.summary}
-            </Markdown>
-          </View>
-          {!isExpanded && recording.summary.length > 150 && (
-            <Text style={[styles.expandText, { color: colors.primary }]}>Tap to read more...</Text>
-          )}
-        </TouchableOpacity>
+        <SummaryMarkdown
+          summary={recording.summary}
+          expanded={isExpanded}
+          onToggle={() => setIsExpanded(!isExpanded)}
+          colors={colors}
+          isDark={isDark}
+        />
       )}
       
       {!recording.summary && !recording.isProcessing && (
@@ -339,239 +334,3 @@ export default function SummaryCard({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  titleSection: {
-    flex: 1,
-    marginRight: 16,
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    flex: 1,
-    lineHeight: 24,
-  },
-  editIcon: {
-    marginLeft: 8,
-    opacity: 0.6,
-  },
-  editContainer: {
-    marginBottom: 8,
-  },
-  titleInput: {
-    fontSize: 18,
-    fontWeight: '600',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-  },
-  editActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  editButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metaContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  meta: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  primaryActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  primaryButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  moreButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionMenu: {
-    borderWidth: 1,
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  actionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-  },
-  actionText: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginLeft: 12,
-  },
-  processingContainer: {
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  processingText: {
-    fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  summaryContainer: {
-    marginTop: 8,
-  },
-  summaryLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  markdownContainer: {
-    flex: 1,
-  },
-  collapsedMarkdown: {
-    maxHeight: 100,
-    overflow: 'hidden',
-  },
-  expandText: {
-    fontSize: 14,
-    marginTop: 8,
-    fontWeight: '500',
-  },
-  noSummaryContainer: {
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  noSummaryText: {
-    fontSize: 14,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-});
-
-const createMarkdownStyles = (colors: any, isDark: boolean) => ({
-  body: {
-    fontSize: 15,
-    color: colors.text,
-    lineHeight: 22,
-  },
-  heading1: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 8,
-    marginTop: 16,
-  },
-  heading2: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 6,
-    marginTop: 12,
-  },
-  heading3: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-    marginTop: 10,
-  },
-  paragraph: {
-    fontSize: 15,
-    color: colors.text,
-    lineHeight: 22,
-    marginBottom: 10,
-  },
-  strong: {
-    fontWeight: '600',
-    color: colors.text,
-  },
-  em: {
-    fontStyle: 'italic',
-    color: colors.textSecondary,
-  },
-  list_item: {
-    fontSize: 15,
-    color: colors.text,
-    lineHeight: 22,
-    marginBottom: 4,
-  },
-  bullet_list: {
-    marginBottom: 10,
-  },
-  ordered_list: {
-    marginBottom: 10,
-  },
-  code_inline: {
-    backgroundColor: isDark ? '#3A3A3C' : '#F5F5F5',
-    color: colors.primary,
-    fontSize: 14,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  code_block: {
-    backgroundColor: isDark ? '#3A3A3C' : '#F5F5F5',
-    color: colors.text,
-    fontSize: 14,
-    padding: 12,
-    borderRadius: 8,
-    marginVertical: 10,
-  },
-  blockquote: {
-    backgroundColor: isDark ? '#2C2C2E' : '#F8F9FA',
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
-    paddingLeft: 12,
-    paddingVertical: 8,
-    marginVertical: 10,
-    fontStyle: 'italic',
-  },
-});

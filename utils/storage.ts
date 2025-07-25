@@ -1,28 +1,56 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import { Recording, AppSettings } from '@/types';
 
 const RECORDINGS_KEY = 'recordings';
 const SETTINGS_KEY = 'settings';
+const RECORDINGS_DIR = FileSystem.documentDirectory + 'recordings/';
+const METADATA_DIR = FileSystem.documentDirectory + 'documents/';
+
+async function ensureDirExists(dir: string) {
+  const dirInfo = await FileSystem.getInfoAsync(dir);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+  }
+}
 
 export const storageUtils = {
   async getRecordings(): Promise<Recording[]> {
     try {
-      const recordings = await AsyncStorage.getItem(RECORDINGS_KEY);
-      return recordings ? JSON.parse(recordings).map((r: any) => ({
-        ...r,
-        createdAt: new Date(r.createdAt)
-      })) : [];
+      await ensureDirExists(RECORDINGS_DIR);
+      await ensureDirExists(METADATA_DIR);
+      const files = await FileSystem.readDirectoryAsync(RECORDINGS_DIR);
+      const recordings: Recording[] = [];
+      for (const file of files) {
+        const metadataFile = METADATA_DIR + file + '.json';
+        try {
+          const metadata = await FileSystem.readAsStringAsync(metadataFile);
+          const parsed = JSON.parse(metadata);
+          // Parse date fields if needed
+          if (parsed.createdAt) parsed.createdAt = new Date(parsed.createdAt);
+          recordings.push(parsed);
+        } catch (e) {
+          // If metadata missing/corrupt, skip
+          console.warn('Missing/corrupt metadata for', file);
+        }
+      }
+      return recordings;
     } catch (error) {
       console.error('Error getting recordings:', error);
       return [];
     }
   },
 
-  async saveRecording(recording: Recording): Promise<void> {
+  async saveRecording(recording: Recording, audioUri: string): Promise<void> {
     try {
-      const recordings = await this.getRecordings();
-      recordings.unshift(recording);
-      await AsyncStorage.setItem(RECORDINGS_KEY, JSON.stringify(recordings));
+      await ensureDirExists(RECORDINGS_DIR);
+      await ensureDirExists(METADATA_DIR);
+      // Save audio file
+      const audioDest = RECORDINGS_DIR + recording.id;
+      await FileSystem.copyAsync({ from: audioUri, to: audioDest });
+      // Save metadata
+      const metadataDest = METADATA_DIR + recording.id + '.json';
+      await FileSystem.writeAsStringAsync(metadataDest, JSON.stringify(recording));
     } catch (error) {
       console.error('Error saving recording:', error);
     }
@@ -30,12 +58,11 @@ export const storageUtils = {
 
   async updateRecording(id: string, updates: Partial<Recording>): Promise<void> {
     try {
-      const recordings = await this.getRecordings();
-      const index = recordings.findIndex(r => r.id === id);
-      if (index !== -1) {
-        recordings[index] = { ...recordings[index], ...updates };
-        await AsyncStorage.setItem(RECORDINGS_KEY, JSON.stringify(recordings));
-      }
+      const metadataFile = METADATA_DIR + id + '.json';
+      const metadata = await FileSystem.readAsStringAsync(metadataFile);
+      const recording = JSON.parse(metadata);
+      const updated = { ...recording, ...updates };
+      await FileSystem.writeAsStringAsync(metadataFile, JSON.stringify(updated));
     } catch (error) {
       console.error('Error updating recording:', error);
     }
@@ -43,9 +70,12 @@ export const storageUtils = {
 
   async deleteRecording(id: string): Promise<void> {
     try {
-      const recordings = await this.getRecordings();
-      const filtered = recordings.filter(r => r.id !== id);
-      await AsyncStorage.setItem(RECORDINGS_KEY, JSON.stringify(filtered));
+      const audioFile = RECORDINGS_DIR + id;
+      const metadataFile = METADATA_DIR + id + '.json';
+      // Delete audio file
+      await FileSystem.deleteAsync(audioFile, { idempotent: true });
+      // Delete metadata
+      await FileSystem.deleteAsync(metadataFile, { idempotent: true });
     } catch (error) {
       console.error('Error deleting recording:', error);
     }

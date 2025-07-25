@@ -84,7 +84,7 @@ export default function ImportButton({ onImportComplete }: ImportButtonProps) {
         isProcessing: false,
       };
 
-      await storageUtils.saveRecording(recording);
+      await storageUtils.saveRecording(recording, destinationUri);
       console.log('Imported recording saved:', recording);
 
       Alert.alert(
