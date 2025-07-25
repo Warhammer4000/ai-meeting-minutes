@@ -4,8 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Settings } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import RecordingButton from '@/components/RecordingButton';
-import ImportButton from '@/components/ImportButton';
+import RecordingButton from '@/components/Import/RecordingButton';
+import ImportButton from '@/components/Import/ImportButton';
 import { useTheme } from '@/contexts/ThemeContext';
 import { AudioManager } from '@/utils/audio';
 import { GeminiAPI } from '@/utils/gemini';
@@ -41,7 +41,7 @@ export default function RecordTab() {
   );
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: any;
     
     if (isRecording) {
       interval = setInterval(async () => {
