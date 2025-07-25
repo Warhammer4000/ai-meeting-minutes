@@ -1,8 +1,8 @@
-import { Audio, AVPlaybackStatus, Recording as ExpoRecording } from 'expo-av';
+import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 
 export class AudioManager {
-  private recording: ExpoRecording | null = null;
+  private recording: Audio.Recording | null = null;
   private sound: Audio.Sound | null = null;
 
   async requestPermissions(): Promise<boolean> {
