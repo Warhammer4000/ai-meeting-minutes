@@ -37,15 +37,7 @@ export function useImportRecording({ onImportComplete }: UseImportRecordingOptio
         );
         return;
       }
-      // Check file size (20MB limit for Gemini API)
-      const maxSize = 20 * 1024 * 1024; // 20MB
-      if (file.size && file.size > maxSize) {
-        Alert.alert(
-          'File Too Large',
-          'Audio file must be smaller than 20MB for AI processing.'
-        );
-        return;
-      }
+     
       // Copy file to app's document directory
       const fileName = `imported_${Date.now()}_${file.name}`;
       const destinationUri = `${FileSystem.documentDirectory}${fileName}`;
